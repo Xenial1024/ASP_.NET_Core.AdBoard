@@ -1,0 +1,77 @@
+﻿@model AdBoard.Core.Models.Domains.Ad
+@{
+    ViewBag.Title = "Szczegóły ogłoszenia";
+    Layout = "_Layout";
+}
+@section Scripts {
+<meta charset="utf-8" />
+}
+<h1>@ViewBag.Title</h1>
+<hr />
+<div class="form-horizontal">
+    <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+        <span class="field-label" style="width: 150px; flex-shrink: 0;">Kategoria:</span>
+        <span class="field-value">@Model.Category</span>
+    </div>
+    <br/>
+    <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+        <span class="field-label" style="width: 150px; flex-shrink: 0;">Tytuł:</span>
+        <span class="field-value">@Model.Title</span>
+    </div>
+    <br />
+    @if(Model.Value != null)
+    {
+        <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+            <span class="field-label" style="width: 150px; flex-shrink: 0;">Wartość:</span>
+            <span class="field-value">@Model.Value @Model.Unit</span>
+        </div>
+    }
+    <br />
+    @if (Model.Description != null)
+    {
+        <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+            <span class="field-label" style="width: 150px; flex-shrink: 0;">Opis:</span>
+            <span class="field-value" span style="white-space: pre-line;">@Model.Description</span>
+        </div>
+        <br />
+    }
+
+    @if (Model.User.Name != null)
+    {
+        <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+            <span class="field-label" style="width: 150px; flex-shrink: 0;">Nazwa oferenta:</span>
+            <span class="field-value">@Model.User.Name</span>
+        </div>
+        <br />
+    }
+
+    <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+        <span class="field-label" style="width: 150px; flex-shrink: 0;">Email:</span>
+        <span class="field-value">@Model.User.Email</span>
+    </div>
+    <br />
+    @if (Model.User.PhoneNumber != null)
+    {
+        <div class="form-group label-font-size" style="display: flex; align-items: baseline; gap: 10px;">
+            <span class="field-label" style="width: 150px; flex-shrink: 0;">Numer telefonu:</span>
+            <span class="field-value">@Model.User.PhoneNumber</span>
+        </div>
+        <br />
+    }
+
+    @if (Model.Images != null && Model.Images.Any())
+    {
+        <div class="form-group">
+            <label class="control-label label-font-size">
+                <span class="field-label">Zdjęcia:</span>
+            </label>
+
+            <div>
+                @foreach (var image in Model.Images)
+                {
+                    <img src="@image.FilePath" alt="@Model.Title" class="img-thumbnail" style="max-width: 415px; margin: 5px;" />
+                }
+            </div>
+        </div>
+    }
+</div>

@@ -1,0 +1,187 @@
+﻿@using System.Security.Claims
+@model List<AdBoard.Core.Models.Domains.Ad>
+
+<div class="d-flex align-items-center justify-content-between">
+    <h1>@ViewBag.Title</h1>
+    @if (ViewBag.ShowEmptyMessage != true) //w każdym innym przypadku niż gdy użytkownik bez własnych ogłoszeń znajduje się na stronie zarządzania ogłoszeniami, wyświetl listę rozwijaną do wyboru kategorii.
+    {
+        <div class="form-group mb-0">
+            <label for="categoryFilter" class="label-font-size mr-2">Filtruj po kategorii:</label>
+            <select id="categoryFilter" class="form-control dark-input d-inline-block" style="width: 200px;">
+                <option value="">Wszystkie kategorie</option>
+                @foreach (var category in Model.Select(ad => ad.Category).Distinct().OrderBy(c => c))
+                {
+                    <option value="@category">@category</option>
+                }
+            </select>
+        </div>
+    }
+</div>
+<hr />
+@if (ViewBag.ShowEmptyMessage == true)
+{
+    <p>Nie masz jeszcze żadnych ogłoszeń.</p>
+    @Html.ActionLink("Dodaj pierwsze ogłoszenie", "Add", "AddEditDelete", null, new { @class = "btn btn-primary" })
+}
+else
+{
+    <table class="table-hover" style="color: #fff; width: 100%;">
+        <thead>
+            <tr style="background-color: #2c3e50; color: #fff;">
+            <th>@Html.DisplayNameFor(m => m.First().Category)</th>
+            <th>@Html.DisplayNameFor(m => m.First().Title)</th>
+            <th>@Html.DisplayNameFor(m => m.First().CreatedDate)</th>
+            <th>@Html.DisplayNameFor(m => m.First().Value)</th>
+            <th>Zdjęcie</th>
+            <th>Akcje</th>
+            </tr>
+        </thead>
+        <tbody>
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var ad = Model[i];
+                <tr style="background-color: @(i % 2 == 0 ? "#1a2530" : "#293a4b")">
+                    <td>@ad.Category</td>
+                    <td>@ad.Title</td>
+                    <td>@ad.CreatedDate</td>
+                    <td>
+                        @if (ad.Value != null)
+                        {
+                            @ad.Value @ad.Unit
+                        }
+                    </td>
+                    <td style="min-width: 120px; vertical-align: top;">
+                        @if (ad.Images?.FirstOrDefault() != null)
+                        {
+                            <img src="@ad.Images.First().FilePath" alt="@ad.Title" class="img-thumbnail" style="max-width: 100px;" />
+                        }
+                        else
+                        {
+                            <div style="height: 50px;"></div>
+                        }
+                    </td>
+                    <td>
+                        <!-- Okno dialogowe z przyciskami "Tak" i "Nie" zamiast "Ok" i "Cancel" -->
+                        <div id="confirmModal" class="modal" tabindex="-1" role="dialog" style="display: none;">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content" style="background-color: #2c3e50; color: #fff; border: 1px solid #34495e;">
+                                    <div class="modal-header" style="border-bottom: 1px solid #34495e;">
+                                        <h5 class="modal-title">Potwierdzenie usunięcia</h5>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p id="confirmMessage"></p>
+                                    </div>
+                                    <div class="modal-footer" style="border-top: 1px solid #34495e;">
+                                        <button type="button" class="btn btn-secondary" id="cancelBtn">Nie</button>
+                                        <button type="button" class="btn btn-danger" id="confirmBtn">Tak</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (ViewBag.ShowManageButtons == true)
+                        {
+                            <!-- Przyciski dla zarządzania ogłoszeniami -->
+                            <!-- Przycisk "Szczegóły" jest niepotrzebny na stronie zarządzania ogłoszeniami, bo i tak szczegóły można zobaczyć klikając w przycisk "Edytuj". -->
+                            <a href="@Url.Action("Edit", "AddEditDelete", new { id = ad.Id })" class="btn btn-warning btn-xs mt-2">
+                                <span class="glyphicon glyphicon-edit"></span> Edytuj
+                            </a>
+                            <form asp-action="DeleteConfirmed" asp-controller="AddEditDelete" asp-route-id="@ad.Id" method="post" style="display: inline;" class="delete-form">
+                                @Html.AntiForgeryToken()
+                                <button type="button" class="btn btn-danger btn-xs mt-2 ml-1 delete-btn"
+                                        data-title="@ad.Title">
+                                    <span class="glyphicon glyphicon-trash"></span> Usuń
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <!-- Przycisk dla przeglądania ogłoszeń -->
+                            <a href="@Url.Action("Details", new { id = ad.Id })" class="btn btn-info btn-xs mt-2">
+                                <span class="glyphicon glyphicon-info-sign"></span> Szczegóły
+                            </a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<script>
+    document.getElementById('categoryFilter').addEventListener('change', function() {
+        const selectedCategory = this.value;
+        const tableRows = document.querySelectorAll('tbody tr');
+
+        tableRows.forEach(row => {
+            const categoryCell = row.cells[0].textContent.trim();
+            if (selectedCategory === '' || categoryCell === selectedCategory)
+                row.style.display = '';
+            else 
+                row.style.display = 'none';
+        });
+    });
+</script>
+
+<script>
+    document.getElementById('categoryFilter')?.addEventListener('change', function() {
+        const selectedCategory = this.value;
+        const tableRows = document.querySelectorAll('tbody tr');
+
+        tableRows.forEach(row => {
+            const categoryCell = row.cells[0].textContent.trim();
+            if (selectedCategory === '' || categoryCell === selectedCategory)
+                row.style.display = '';
+            else
+                row.style.display = 'none';
+        });
+    });
+
+    let currentForm = null;
+    const modal = document.getElementById('confirmModal');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmBtn = document.getElementById('confirmBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            const title = this.getAttribute('data-title');
+            const form = this.closest('.delete-form');
+
+            confirmMessage.innerHTML = `Czy na pewno chcesz usunąć ogłoszenie <strong>"${title}"</strong>?<br><br>Ta operacja jest nieodwracalna!`;
+            currentForm = form;
+
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        });
+    });
+
+    confirmBtn.addEventListener('click', function() {
+        if (currentForm) 
+            currentForm.submit();
+        hideModal();
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        hideModal();
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) 
+            hideModal();
+    });
+
+    // Obsługa przycisku Esc
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.style.display === 'block') 
+            hideModal();
+    });
+
+    function hideModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+        currentForm = null;
+    }
+</script>

@@ -1,0 +1,376 @@
+﻿@using AdBoard.Core.Models.Domains
+@model AdBoard.Core.Models.Domains.Ad
+@Html.AntiForgeryToken()
+
+<h1 id="title">@ViewBag.Title</h1>
+<hr />
+
+@using (Html.BeginForm(Model.Id == 0 ? "Add" : "Edit", "AddEditDelete", FormMethod.Post, new { @class = "form-horizontal", enctype = "multipart/form-data" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+    @Html.HiddenFor(m => m.Id)
+    @Html.HiddenFor(m => m.UserId)
+
+    @if (ViewBag.ModelErrors != null)
+    {
+        <ul class="text-danger">
+            @foreach (string err in ViewBag.ModelErrors)
+            {
+                <li>@err</li>
+            }
+        </ul>
+    }
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Category, new { @class = "control-label label-font-size" })
+        @Html.DropDownListFor(m => m.Category, new SelectList(ViewBag.Categories as List<string>, Model.Category), "--- Wybierz kategorię ---", new { @class = "form-control dark-input", id = "Category" })
+        @Html.ValidationMessageFor(m => m.Category)
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Title, new { @class = "control-label label-font-size" })
+        @Html.TextBoxFor(m => m.Title, new { @class = "form-control dark-input" })
+        @Html.ValidationMessageFor(m => m.Title)
+    </div>
+
+
+    <div class="form-group" id="valueGroup">
+        @Html.LabelFor(m => m.Value, new { @class = "control-label label-font-size" })
+        <div class="row">
+            <div class="col-md-8">
+                @Html.TextBoxFor(m => m.Value, new { @class = "form-control dark-input", id = "Value" })
+            </div>
+            <div class="col-md-4">
+                @Html.DropDownListFor(m => m.Unit, new SelectList(ViewBag.Units as List<string>, Model.Unit), new { @class = "form-control dark-input"})
+            </div>
+        </div>
+        @Html.ValidationMessageFor(m => m.Value)
+    </div>
+
+    <div class="form-group">
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Description, new { @class = "control-label label-font-size" })
+        @Html.TextAreaFor(m => m.Description, new { @class = "form-control dark-input", rows = 14 })
+    </div>
+
+    <div class="form-group">
+        <label class="control-label label-font-size">Zdjęcia:</label>
+
+        <div class="existing-images mb-3" id="image-list">
+            @if (Model.Images != null && Model.Images.Any())
+            {
+                @foreach (var image in Model.Images)
+                {
+                    <div class="existing-image-item d-inline-block mr-3 mb-3 position-relative" data-image-id="@image.Id">
+                        <img src="@image.FilePath" alt="@Model.Title" class="img-thumbnail" style="max-width: 400px;" />
+                        <div class="mt-2">
+                            <button type="button" class="btn btn-danger btn-sm remove-image-btn" data-image-id="@image.Id">
+                                <i class="fas fa-trash"></i> Usuń zdjęcie
+                            </button>
+                            <input type="hidden" value="" class="remove-image-input" data-image-id="@image.Id" />
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        <div class="custom-file-container" id="drop-area">
+            <div class="drop-zone">
+                <span class="drop-zone__prompt">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Przeciągnij tu zdjęcia lub kliknij, aby je dodać.
+                    <br><small>(Maksymalny rozmiar: 16 MB na plik, maksymalnie 9 zdjęć)</small>
+                </span>
+                <input type="file" name="newImages" id="fileUpload" class="drop-zone__input" multiple accept="image/*">
+            </div>
+        </div>
+    </div>
+
+    <br />
+    <div class="form-group">
+        <input type="submit" class="btn btn-success btn-lg" value="@(Model.Id == 0 ? "Dodaj" : "Zapisz")" />
+        <a href="@Url.Action("ListOfAds", "Browse", new { UserId = "current" })" class="btn btn-secondary btn-lg ml-2">Anuluj</a>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const dropZone = document.querySelector('.drop-zone');
+            const fileInput = document.querySelector('.drop-zone__input');
+            const imageList = document.getElementById('image-list');
+            const MAX_FILE_SIZE = 16777216; // 16 MB
+            const MAX_FILES = 9;
+
+            if (!dropZone) return;
+
+            function toggleDropZone() {
+                const visibleImages = document.querySelectorAll('.existing-image-item:not(.image-marked-for-removal)').length;
+                if (visibleImages >= MAX_FILES)
+                    dropZone.style.display = 'none';
+                else
+                    dropZone.style.display = 'flex';
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function updateImageList(files) {
+                const existingImages = document.querySelectorAll('.existing-image-item:not(.image-marked-for-removal)').length;
+                const currentNewCount = imageList.children.length;
+                const totalAfterAdd = existingImages + currentNewCount + files.length;
+
+                if (totalAfterAdd > MAX_FILES) {
+                    alert(`Można dodać maksymalnie ${MAX_FILES} zdjęć.`);
+                    fileInput.value = '';
+                    return;
+                }
+
+                Array.from(files).forEach(function (file) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        alert(`Plik "${file.name}" jest zbyt duży. Maksymalny rozmiar to ${formatFileSize(MAX_FILE_SIZE)}.`);
+                        fileInput.value = '';
+                        return;
+                    }
+
+                    if (!file.type.startsWith('image/')) {
+                        alert(`Plik "${file.name}" nie jest obrazem.`);
+                        fileInput.value = '';
+                        return;
+                    }
+
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item d-flex justify-content-between align-items-center mb-2 p-2 border rounded';
+
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        fileItem.innerHTML = `
+                            <div class="file-item__info d-flex align-items-center">
+                                <img src="${e.target.result}" alt="${file.name}" class="img-thumbnail mr-3" style="max-width: 80px; max-height: 80px;" />
+                                <div>
+                                    <div class="file-item__name font-weight-bold" title="${file.name}">${file.name}</div>
+                                    <div class="file-item__size text-muted">${formatFileSize(file.size)}</div>
+                                </div>
+                            </div>
+                            <button type="button" class="file-item__remove btn btn-danger btn-sm">
+                                <i class="fas fa-times"></i> Usuń
+                            </button>
+                        `;
+
+                        const removeButton = fileItem.querySelector('.file-item__remove');
+                        removeButton.addEventListener('click', function () {
+                            const dt = new DataTransfer();
+                            const currentFiles = Array.from(fileInput.files);
+                            currentFiles.forEach(function(f) {
+                                if (f !== file)
+                                    dt.items.add(f);
+                            });
+                            fileInput.files = dt.files;
+
+                            fileItem.remove();
+                            toggleDropZone();
+                        });
+                    };
+                    reader.readAsDataURL(file);
+
+                    imageList.appendChild(fileItem);
+                });
+                toggleDropZone();
+            }
+
+            dropZone.addEventListener('click', function () {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function () {
+                if (fileInput.files.length) {
+                    updateImageList(fileInput.files);
+                }
+            });
+
+            ['dragover', 'dragenter'].forEach(function(eventName) {
+                dropZone.addEventListener(eventName, function(e) {
+                    e.preventDefault();
+                    dropZone.classList.add('drop-zone--over');
+                });
+            });
+
+            ['dragleave', 'dragend'].forEach(function(eventName) {
+                dropZone.addEventListener(eventName, function() {
+                    dropZone.classList.remove('drop-zone--over');
+                });
+            });
+
+            dropZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    updateImageList(e.dataTransfer.files);
+                }
+                dropZone.classList.remove('drop-zone--over');
+            });
+
+            toggleDropZone();
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const maxTitleLength = 80;
+            const maxValue = 9999999999999999.99; // decimal(18,2)
+            const category = document.getElementById('Category');
+            const title = document.getElementById('Title');
+            const value = document.getElementById('Value');
+
+            if (category) {
+                category.addEventListener('blur', function () {
+                    if (this.value === '--- Wybierz kategorię ---' || !this.value) {
+                        this.setCustomValidity('Wybór kategorii jest wymagany.');
+                        this.classList.add('input-validation-error');
+                    } else {
+                        this.setCustomValidity('');
+                        this.classList.remove('input-validation-error');
+                    }
+                });
+            }
+
+            if (title) {
+                title.addEventListener('blur', function () {
+                    if (!this.value.trim()) {
+                        this.setCustomValidity('Tytuł nie może być pusty.');
+                        this.classList.add('input-validation-error');
+                    } else {
+                        this.setCustomValidity('');
+                        this.classList.remove('input-validation-error');
+                    }
+                });
+            }
+
+            if (value) {
+                value.addEventListener('blur', function () {
+                    const val = parseFloat(this.value);
+                    if (isNaN(val) || val < 0 || val > maxValue) {
+                        this.setCustomValidity('Kwota musi być nieujemną liczbą nie większą niż 9999999999999999.99.');
+                        this.classList.add('input-validation-error');
+                    } else {
+                        this.setCustomValidity('');
+                        this.classList.remove('input-validation-error');
+                    }
+                });
+            }
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.addEventListener('click', function (e) {
+                const removeBtn = e.target.closest('.remove-image-btn');
+                if (removeBtn) {
+                    e.preventDefault();
+
+                    const imageId = removeBtn.getAttribute('data-image-id');
+                    const imageItem = removeBtn.closest('.existing-image-item');
+                    const hiddenInput = document.querySelector(`input[data-image-id="${imageId}"]`);
+
+                    if (!hiddenInput) {
+                        console.error('Nie znaleziono ukrytego pola dla obrazu:', imageId);
+                        return;
+                    }
+
+                    hiddenInput.value = imageId;
+                    hiddenInput.name = "removeImages";
+
+                    imageItem.classList.add('image-marked-for-removal');
+
+                    let notice = imageItem.querySelector('.image-remove-notice');
+                    if (!notice) {
+                        notice = document.createElement('div');
+                        notice.className = 'image-remove-notice text-danger mt-1';
+                        notice.textContent = 'Usunięto zdjęcie.';
+
+                        const btnContainer = removeBtn.parentElement;
+                        btnContainer.prepend(notice);
+                    }
+
+                    removeBtn.innerHTML = '<i class="fas fa-undo"></i> Przywróć zdjęcie';
+                    removeBtn.classList.remove('btn-danger', 'remove-image-btn');
+                    removeBtn.classList.add('btn-secondary', 'restore-image-btn');
+                    return;
+                }
+
+                const restoreBtn = e.target.closest('.restore-image-btn');
+                if (restoreBtn) {
+                    const imageItem = restoreBtn.closest('.existing-image-item');
+                    const imageId = restoreBtn.getAttribute('data-image-id');
+                    const hiddenInput = imageItem.querySelector(`input[data-image-id="${imageId}"]`);
+
+                    hiddenInput.value = '';
+                    hiddenInput.removeAttribute('name');
+
+                    imageItem.classList.remove('image-marked-for-removal');
+                    imageItem.style.opacity = '';
+                    imageItem.style.filter = '';
+
+                    const notice = imageItem.querySelector('.image-remove-notice');
+                    if (notice) notice.remove();
+
+                    const newBtn = document.createElement('button');
+                    newBtn.type = 'button';
+                    newBtn.className = 'btn btn-danger btn-sm remove-image-btn';
+                    newBtn.setAttribute('data-image-id', imageId);
+                    newBtn.innerHTML = '<i class="fas fa-trash"></i> Usuń zdjęcie';
+
+                    const btnContainer = restoreBtn.parentElement;
+                    restoreBtn.remove();
+                    btnContainer.prepend(newBtn);
+                }
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const categorySelect = document.getElementById('Category');
+            const valueInput = document.getElementById('Value');
+            const valueGroup = document.getElementById('valueGroup');
+
+            if (!categorySelect || !valueGroup) 
+                return;
+
+            const hiddenCategories = ['Oddam za darmo', 'Przyjmę za darmo', 'Poznam panią', 'Poznam pana'];
+
+                    function toggleValueField() {
+            const selectedCategory = categorySelect.value;
+            console.log("Wybrana kategoria:", selectedCategory); // <-- sprawdź w konsoli
+
+                    if (!valueInput)
+            console.warn('⚠️ Nie znaleziono pola #Value');
+        if (!categorySelect)
+            console.warn('⚠️ Nie znaleziono pola #Category');
+
+            if (hiddenCategories.includes(selectedCategory)) {
+                valueGroup.style.display = 'none';
+                valueInput.value = '';
+                console.log("Ukrywam pola wartości");
+            } else {
+                valueGroup.style.display = 'block';
+                console.log("Pokazuję pola wartości");
+            }
+        }
+
+            // Sprawdź przy załadowaniu strony
+            toggleValueField();
+
+            // Sprawdź przy zmianie kategorii
+            categorySelect.addEventListener('change', toggleValueField);
+        });
+
+    </script>
+}

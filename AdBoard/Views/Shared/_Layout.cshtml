@@ -1,0 +1,88 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
+    <title>@ViewBag.Title</title>
+    @RenderSection("Styles", required: false)
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    @if (ViewBag.HideMenu != true) //nie może być @if (!ViewBag.HideMenu), bo to nie obsłuży nulla
+    {
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark bg-dark">
+            <div class="container">
+                <div class="collapse navbar-collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="btn btn-dark mx-1 py-0">
+                            @Html.ActionLink("Menu", "Index", "Home", new { area = "" }, new { @class = "nav-link text-white menu-bar" })
+                        </li>
+                        <li class="btn btn-dark mx-1 py-0">
+                            @Html.ActionLink("Przeglądaj ogłoszenia", "ListOfAds", "Browse", new { UserId = "others", area = "" }, new { @class = "nav-link text-white menu-bar" })
+                        </li>
+                        <li class="btn btn-dark mx-1 py-0 @(!User.Identity.IsAuthenticated ? "disabled" : "")">
+                            @Html.ActionLink("Dodaj ogłoszenie", "Add", "AddEditDelete", new { area = "" }, new { @class = "nav-link text-white menu-bar" })
+                        </li>
+                        <li class="btn btn-dark mx-1 py-0 @(!User.Identity.IsAuthenticated ? "disabled" : "")">
+                            @Html.ActionLink("Zarządzaj ogłoszeniami", "ListOfAds", "Browse", new { UserId = "current", area = "" }, new { @class = "nav-link text-white menu-bar" })
+                        </li>
+                        <li class="btn btn-dark mx-1 py-0 me-4">
+                            @Html.ActionLink("Informacje", "Info", "Home", new { area = "" }, new { @class = "nav-link text-white menu-bar" })
+                        </li>
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            <li class="btn btn-dark mx-1 py-0">
+                                <a class="nav-link text-white menu-bar" asp-area="Identity" asp-page="/Account/Manage/Index" title="Manage">Ustawienia konta</a>
+                            </li>
+                            <li class="btn btn-dark mx-1 py-0">
+                                <form method="post" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })" class="d-inline">
+                                    <button type="submit" class="nav-link text-white bg-transparent menu-bar border-0">Wyloguj</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="btn btn-dark mx-1 py-0 ms-3">
+                                 <a class="nav-link text-white menu-bar" asp-area="Identity" asp-page="/Account/Login">Logowanie</a>
+                            </li>
+                            <li class="btn btn-dark mx-1 py-0">
+                                <a class="nav-link text-white menu-bar" asp-area="Identity" asp-page="/Account/Register">Rejestracja</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    }
+    <div class="container body-content">
+        @RenderBody()
+        <hr />
+        <footer>
+            <p>&copy; @DateTime.Now.Year - Wysyłanie e-maili</p>
+        </footer>
+    </div>
+
+    <div class="privacy-policy-info" style="display: none;">
+        <span class="cookie-icon">🍪</span>
+        Korzystając ze strony wyrażasz zgodę na wykorzystanie przez serwis plików cookies.
+        <a href="/Home/Info">Dowiedz się więcej</a>
+        <button onclick="closePrivacyPolicy()" type="button" class="btn btn-light btn-sm mx-3 my-1 privacy-policy-btn">Ok, rozumiem</button>
+    </div>
+
+    @RenderSection("scripts", required: false)
+</body>
+</html>
+<script>
+    const closePrivacyPolicy = () => {
+        $('.privacy-policy-info').css("display", "none");
+        $.cookie("privacyPolicy", "1", { path: '/', expires: 365 });
+    }
+
+    $(document).ready(() => {
+        if ($.cookie("privacyPolicy") !== "1")
+            $('.privacy-policy-info').css("display", "");
+    });
+</script>
